@@ -1,0 +1,21 @@
+{
+    "name": "ROS 2 Humble",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/warrior,type=bind",
+    "workspaceFolder": "/workspaces/warrior",
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-iot.vscode-ros",
+                "ms-vscode.cpptools",
+                "ms-python.python"
+            ]
+        }
+    },
+
+    "remoteUser": "root"
+}
