@@ -26,6 +26,20 @@ RUN apt-get update && apt-get install -y \
     python3-rosdep \
     && rm -rf /var/lib/apt/lists/*
 
+    # TurtleBot3 packages
+RUN apt-get update && apt-get install -y \
+    ros-humble-turtlebot3 \
+    ros-humble-turtlebot3-simulations \
+    && rm -rf /var/lib/apt/lists/*
+
+
+RUN apt-get update && apt-get install -y \
+    x11-apps \
+    mesa-utils \
+    libgl1-mesa-dri \
+    libglx-mesa0 \
+    libegl1 \
+    && rm -rf /var/lib/apt/lists/*
 # ROS 2 desktop packages:
 # Includes RViz2 and other desktop tools.
 RUN apt-get update && apt-get install -y \

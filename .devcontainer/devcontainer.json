@@ -7,6 +7,23 @@
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/warrior,type=bind",
     "workspaceFolder": "/workspaces/warrior",
 
+    "runArgs": [
+        "--device=/dev/dri",
+        "--group-add=video",
+        "--group-add=render"
+    ],
+
+    // 2. Mount the host X11 display socket
+    "mounts": [
+        "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
+    ],
+
+    // 3. Set the required display and simulation environment variables
+    "containerEnv": {
+        "DISPLAY": "${localEnv:DISPLAY}",
+        "TURTLEBOT3_MODEL": "burger"
+    },
+
     "customizations": {
         "vscode": {
             "extensions": [
