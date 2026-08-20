@@ -26,13 +26,16 @@ RUN apt-get update && apt-get install -y \
     python3-rosdep \
     && rm -rf /var/lib/apt/lists/*
 
-    # TurtleBot3 packages
+# TurtleBot3 base packages (Removed the classic simulations package)
 RUN apt-get update && apt-get install -y \
     ros-humble-turtlebot3 \
-    ros-humble-turtlebot3-simulations \
     && rm -rf /var/lib/apt/lists/*
 
-
+# NEW GAZEBO (Ignition Fortress) and ROS 2 Bridge
+RUN apt-get update && apt-get install -y \
+    ros-humble-ros-gz \
+    && rm -rf /var/lib/apt/lists/*
+    
 RUN apt-get update && apt-get install -y \
     x11-apps \
     mesa-utils \
