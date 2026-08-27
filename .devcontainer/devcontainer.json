@@ -7,20 +7,22 @@
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/warrior,type=bind",
     "workspaceFolder": "/workspaces/warrior",
 
-    "runArgs": [
-        "--device=/dev/dri",
-        "--group-add=video",
-        "--group-add=render"
-    ],
+    // Nothing platform-specific here on purpose: no /dev/dri, no X11 socket
+    // mount, no host DISPLAY passthrough. That's what makes this work
+    // unmodified on Linux, Windows, and macOS, and on any GPU (or none).
+    "forwardPorts": [6080],
+    "portsAttributes": {
+        "6080": {
+            "label": "Robot GUI (noVNC) — open in browser",
+            "onAutoForward": "openBrowser"
+        }
+    },
 
-    // 2. Mount the host X11 display socket
-    "mounts": [
-        "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
-    ],
+    // Starts the virtual display + VNC stack every time the container
+    // (re)starts. supervisord daemonizes itself, so this returns immediately.
+    "postStartCommand": "sudo supervisord -c /etc/supervisor/supervisord.conf || sudo supervisorctl -c /etc/supervisor/supervisord.conf reload",
 
-    // 3. Set the required display and simulation environment variables
     "containerEnv": {
-        "DISPLAY": "${localEnv:DISPLAY}",
         "TURTLEBOT3_MODEL": "burger"
     },
 
@@ -34,5 +36,16 @@
         }
     },
 
-    "remoteUser": "root"
+    // Must match the user created (and left active via `USER $USERNAME`)
+    // in the Dockerfile — otherwise VS Code silently connects as root.
+    "remoteUser": "vscode"
+
+    // --- Optional: native GPU acceleration on Linux -------------------
+    // If you're on native Linux (not WSL2/macOS) and want hardware-
+    // accelerated rendering instead of the default software rendering,
+    // a club member can add these on their own machine only:
+    //   "runArgs": ["--device=/dev/dri", "--group-add=video", "--group-add=render"]
+    // and remove `LIBGL_ALWAYS_SOFTWARE=1` from their shell. This is
+    // machine-specific (depends on your GPU/driver), so it's not part of
+    // the shared config everyone builds from.
 }
