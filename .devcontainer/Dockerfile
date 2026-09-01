@@ -72,7 +72,7 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
-COPY .devcontainer/supervisord.conf /etc/supervisor/conf.d/gui.conf
+COPY supervisord.conf /etc/supervisor/conf.d/gui.conf
 RUN mkdir -p /var/log/supervisor
 
 # Auto-source ROS + sane defaults for every shell (works for both the login
