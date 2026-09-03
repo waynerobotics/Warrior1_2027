@@ -1,10 +1,6 @@
 {
     "name": "ROS 2 Humble",
 
-    // Compose, not a plain build+run  Args — the parts that vary by
-    // machine (GPU device, X11/WSLg sockets) live in
-    // docker-compose.override.yml, which setup.sh regenerates for you.
-    // This file and docker-compose.yml never need to change per-user.
     "dockerComposeFile": [
         "docker-compose.yml",
         "docker-compose.override.yml"
@@ -14,14 +10,11 @@
 
     // Runs on the host before every build/rebuild, so "Reopen in
     // Container" / "Rebuild Container" is still the only command you
-    // ever have to run — this just detects your GPU/OS first and writes
-    // the override file setup.sh would otherwise require running by hand.
-    // NOTE: on Windows this only runs as bash if VS Code itself is
-    // attached to WSL2 (open the project via `code .` from a WSL2
-    // terminal, or the "Reopen in WSL" command first). Opening the
-    // project directly from the Windows filesystem side runs this as a
-    // Windows shell instead — in that case run `.devcontainer\setup.sh`
-    // manually from a WSL2 terminal once before rebuilding.
+    // ever have to run. NOTE: on Windows this only runs as bash if VS
+    // Code is attached to WSL2 when it launches (open via `code .` from
+    // a WSL2 terminal, or "Reopen in WSL" first). Otherwise, run
+    // `.devcontainer/setup.sh` manually from a WSL2 terminal once
+    // before rebuilding.
     "initializeCommand": "bash .devcontainer/setup.sh",
 
     "forwardPorts": [6080],
@@ -41,15 +34,10 @@
             ]
         }
     },
-    
-    // Must match the user created (and left active via `USER $USERNAME`)
-    // in the Dockerfile — otherwise VS Code silently connects as root.
+
     "remoteUser": "vscode"
 
-    // --- Manual overrides -----------------------------------------------
-    // setup.sh auto-detects your GPU/OS, but you can force a choice:
-    //   ./setup.sh --accel=software     force software rendering
-    //   ./setup.sh --gui=false          headless (no Xvfb/VNC at all,
-    //                                   saves resources for CLI-only work)
-    // Re-run it, then Rebuild Container.
+    // Manual overrides (re-run, then Rebuild Container):
+    //   ./setup.sh --accel=software   force software rendering
+    //   ./setup.sh --gui=false        headless, no GUI stack at all
 }

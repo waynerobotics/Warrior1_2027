@@ -7,11 +7,10 @@ services:
       - ..:/workspaces/warrior:cached
     working_dir: /workspaces/warrior
     ports:
-      - "6080:6080"   # noVNC — harmless to publish even if unused (WSLg/X11 modes)
+      - "6080:6080"   # noVNC — harmless to publish even when unused (native/WSLg profiles)
     environment:
-      TURTLEBOT3_MODEL: burger
-      # Overridden per-machine by setup.sh via docker-compose.override.yml
-      # and .env. These are the safe, works-everywhere defaults.
+      # Overridden per-machine by setup.sh via docker-compose.override.yml.
+      # These are the safe, works-everywhere defaults.
       ENABLE_GUI: ${ENABLE_GUI:-true}
       DISPLAY_MODE: ${DISPLAY_MODE:-novnc}   # novnc | native
     stdin_open: true
