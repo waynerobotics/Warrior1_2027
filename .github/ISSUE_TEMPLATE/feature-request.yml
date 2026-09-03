@@ -1,0 +1,61 @@
+name: Feature Request
+description: Propose a new feature or enhancement for the project.
+title: "[Feature]: "
+labels: ["type: feature"]
+body:
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Subsystem
+      description: Which part of the system does this impact?
+      options:
+        - Navigation
+        - Localization
+        - Perception
+        - Control
+        - Hardware / Embedded
+        - Sensors
+        - Simulation
+        - DevEnv / CI
+        - Testing
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Estimated urgency/impact
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem & Motivation
+      description: What problem does this feature solve?
+      placeholder: Describe why this work is necessary...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_work
+    attributes:
+      label: Proposed Implementation
+      description: High-level overview of planned work or technical design.
+      placeholder: Outline the changes to be made...
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Screenshots, hardware logs, or related issues.
+    validations:
+      required: false
