@@ -1,29 +1,28 @@
 {
     "name": "ROS 2 Humble",
-    "build": {
-        "dockerfile": "Dockerfile",
-        "context": ".."
-    },
-    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/warrior,type=bind",
+
+    "dockerComposeFile": [
+        "docker-compose.yml",
+        "docker-compose.override.yml"
+    ],
+    "service": "ros2",
     "workspaceFolder": "/workspaces/warrior",
 
-    // Nothing platform-specific here on purpose: no /dev/dri, no X11 socket
-    // mount, no host DISPLAY passthrough. That's what makes this work
-    // unmodified on Linux, Windows, and macOS, and on any GPU (or none).
+    // Runs on the host before every build/rebuild, so "Reopen in
+    // Container" / "Rebuild Container" is still the only command you
+    // ever have to run. NOTE: on Windows this only runs as bash if VS
+    // Code is attached to WSL2 when it launches (open via `code .` from
+    // a WSL2 terminal, or "Reopen in WSL" first). Otherwise, run
+    // `.devcontainer/setup.sh` manually from a WSL2 terminal once
+    // before rebuilding.
+    "initializeCommand": "bash .devcontainer/setup.sh",
+
     "forwardPorts": [6080],
     "portsAttributes": {
         "6080": {
             "label": "Robot GUI (noVNC) — open in browser",
             "onAutoForward": "openBrowser"
         }
-    },
-
-    // Starts the virtual display + VNC stack every time the container
-    // (re)starts. supervisord daemonizes itself, so this returns immediately.
-    "postStartCommand": "sudo supervisord -c /etc/supervisor/supervisord.conf || sudo supervisorctl -c /etc/supervisor/supervisord.conf reload",
-
-    "containerEnv": {
-        "TURTLEBOT3_MODEL": "burger"
     },
 
     "customizations": {
@@ -36,16 +35,9 @@
         }
     },
 
-    // Must match the user created (and left active via `USER $USERNAME`)
-    // in the Dockerfile — otherwise VS Code silently connects as root.
     "remoteUser": "vscode"
 
-    // --- Optional: native GPU acceleration on Linux -------------------
-    // If you're on native Linux (not WSL2/macOS) and want hardware-
-    // accelerated rendering instead of the default software rendering,
-    // a club member can add these on their own machine only:
-    //   "runArgs": ["--device=/dev/dri", "--group-add=video", "--group-add=render"]
-    // and remove `LIBGL_ALWAYS_SOFTWARE=1` from their shell. This is
-    // machine-specific (depends on your GPU/driver), so it's not part of
-    // the shared config everyone builds from.
+    // Manual overrides (re-run, then Rebuild Container):
+    //   ./setup.sh --accel=software   force software rendering
+    //   ./setup.sh --gui=false        headless, no GUI stack at all
 }

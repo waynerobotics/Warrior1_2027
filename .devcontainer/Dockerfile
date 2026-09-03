@@ -5,9 +5,8 @@ SHELL ["/bin/bash", "-c"]
 # ---------------------------------------------------------------------------
 # Non-root user (matches your host UID/GID so files created in the container
 # aren't owned by root on disk). 1000 is the default first-user UID on
-# Linux/macOS; if a teammate's host UID differs they can override it at
-# build time with --build-arg USER_UID=<their uid>, or devcontainer.json's
-# updateRemoteUserUID feature can do it automatically.
+# Linux/macOS; override at build time with --build-arg USER_UID=<your uid>
+# if it differs.
 # ---------------------------------------------------------------------------
 ARG USERNAME=vscode
 ARG USER_UID=1000
@@ -43,11 +42,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
-# OpenGL: software rendering via llvmpipe (Mesa). This is the piece that
-# makes Gazebo/RViz2 work identically on every machine, including ones with
-# no GPU at all (e.g. a Mac under Docker Desktop, or a CI runner). It's
-# slower than hardware acceleration, but it *always works*. Members who want
-# GPU acceleration can opt in later (see devcontainer.json comments).
+# OpenGL: software rendering via llvmpipe (Mesa). Makes Gazebo/RViz2 work
+# on any machine, including ones with no GPU (Mac, CI runners). Slower than
+# hardware acceleration, but always works. GPU acceleration is opted into
+# at *runtime* via docker-compose.override.yml (see setup.sh) — nothing
+# here needs to change for that.
 # ---------------------------------------------------------------------------
 RUN apt-get update && apt-get install -y \
     mesa-utils \
@@ -58,10 +57,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
-# Virtual display + browser-based VNC (noVNC). This is what lets every
-# platform (Linux/Windows/macOS) see GUI apps the same way: open
-# http://localhost:6080 in a browser. No host X server, no XQuartz, no
-# VcXsrv, no DISPLAY env-var juggling required.
+# Virtual display + browser-based VNC (noVNC): the universal-fallback GUI
+# path. Open http://localhost:6080 in a browser. Only actually started at
+# runtime if DISPLAY_MODE=novnc (see entrypoint.sh) — on profiles that use
+# native X11/WSLg passthrough instead, these processes are simply never
+# launched.
 # ---------------------------------------------------------------------------
 RUN apt-get update && apt-get install -y \
     xvfb \
@@ -72,17 +72,42 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
-COPY .devcontainer/supervisord.conf /etc/supervisor/conf.d/gui.conf
+# NOTE: build context is `.` (the .devcontainer folder itself — see
+# docker-compose.yml), so these COPY sources are bare filenames, not
+# prefixed with .devcontainer/.
+COPY supervisord.conf /etc/supervisor/supervisord.conf
 RUN mkdir -p /var/log/supervisor
 
-# Auto-source ROS + sane defaults for every shell (works for both the login
-# shell and the ones VS Code spawns for its integrated terminal)
+# Source ROS for every shell. Deliberately NOT exporting DISPLAY or
+# LIBGL_ALWAYS_SOFTWARE here — those are runtime-overridable via ENV below
+# instead. A value exported from .bashrc would re-clobber whatever
+# docker-compose's `environment:` block sets, since .bashrc runs *after*
+# a process already has its correct environment. That was a real bug here
+# during development: DISPLAY looked right at container start but
+# silently reverted the moment an interactive shell opened.
 RUN echo "source /opt/ros/humble/setup.bash" >> /home/$USERNAME/.bashrc \
-    && echo "export TURTLEBOT3_MODEL=burger" >> /home/$USERNAME/.bashrc \
-    && echo "export LIBGL_ALWAYS_SOFTWARE=1" >> /home/$USERNAME/.bashrc \
-    && echo "export DISPLAY=:1" >> /home/$USERNAME/.bashrc \
     && chown $USER_UID:$USER_GID /home/$USERNAME/.bashrc
+
+# Safe, no-GPU/noVNC defaults. docker-compose.override.yml (written by
+# setup.sh) overrides these per-machine at container-creation time — that
+# override sticks, because ENV sits below it in Docker's precedence order,
+# unlike a .bashrc export which would sit above it.
+ENV TURTLEBOT3_MODEL=burger
+ENV DISPLAY=:1
+ENV LIBGL_ALWAYS_SOFTWARE=1
+
+# Entrypoint must be copied and made executable while still root — once
+# USER switches to a non-root account, this user has no write access to
+# /usr/local/bin, so this block must come BEFORE the USER instruction.
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod 755 /usr/local/bin/entrypoint.sh
 
 WORKDIR /workspaces/warrior
 
+# Everything after this line, and every container started from this
+# image, runs as $USERNAME — keep USER as the last filesystem-affecting
+# instruction in the file.
 USER $USERNAME
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/bin/bash"]

@@ -1,0 +1,3 @@
+# No GPU passthrough available/selected — software rendering + noVNC.
+services:
+  ros2: {}
