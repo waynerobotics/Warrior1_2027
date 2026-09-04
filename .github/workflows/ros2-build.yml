@@ -1,0 +1,123 @@
+name: ROS 2 Devcontainer CI
+
+# Triggers on anything that could break either the container itself
+# (Dockerfile, entrypoint, compose files) or the ROS packages it builds.
+on:
+  push:
+    paths:
+      - '.devcontainer/**'
+      - '**/CMakeLists.txt'
+      - '**/package.xml'
+      - '**/*.py'
+      - '**/*.cpp'
+      - '**/*.hpp'
+      - '**/*.launch.py'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - '.devcontainer/**'
+      - '**/CMakeLists.txt'
+      - '**/package.xml'
+      - '**/*.py'
+      - '**/*.cpp'
+      - '**/*.hpp'
+      - '**/*.launch.py'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    # All docker compose commands assume they're run from .devcontainer/,
+    # same as a developer would locally.
+    defaults:
+      run:
+        working-directory: .devcontainer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # GitHub-hosted runners have no GPU and no X server, so CI can only
+      # ever exercise the software-rendering + noVNC profile. Forcing it
+      # explicitly (rather than trusting auto-detect) keeps CI
+      # deterministic regardless of what the runner image looks like.
+      - name: Force software-rendering profile
+        run: |
+          chmod +x setup.sh entrypoint.sh
+          ./setup.sh --accel=software --gui=true
+          cat .env
+          cat docker-compose.override.yml
+
+      # Catches Dockerfile COPY-path mismatches, bad YAML, and anything
+      # that would only surface as "works differently than intended" —
+      # this is the merged config Docker would actually run.
+      - name: Validate merged compose config
+        run: docker compose config
+
+      - name: Build image
+        run: docker compose build
+
+      - name: Start container
+        run: docker compose up -d
+
+      - name: Confirm container is actually running (not crash-looped)
+        run: |
+          sleep 3
+          docker compose ps
+          # Fails the job loudly if the container isn't Up — catches the
+          # exact "entrypoint permission denied, container exits
+          # immediately" failure mode from earlier development.
+          status="$(docker compose ps --format json ros2 | python3 -c 'import json,sys; print(json.load(sys.stdin)["State"])')"
+          if [ "$status" != "running" ]; then
+            echo "::error::Container did not start (state: $status)"
+            docker compose logs
+            exit 1
+          fi
+
+      # Confirms entrypoint.sh actually ran and started the GUI stack —
+      # this is what silently breaks if entrypoint permissions or
+      # ENABLE_GUI/DISPLAY_MODE ever regress.
+      - name: Verify GUI stack started
+        run: |
+          docker compose exec -T ros2 sudo supervisorctl -c /etc/supervisor/supervisord.conf status
+          curl -sf http://localhost:6080/vnc.html > /dev/null && echo "noVNC reachable"
+
+      # Confirm software OpenGL rendering actually works end-to-end
+      # (not just that the process started) — glxinfo will fail loudly
+      # if Mesa/llvmpipe isn't functioning.
+      - name: Verify software OpenGL rendering
+        run: |
+          docker compose exec -T ros2 bash -c "glxinfo | grep 'OpenGL renderer'"
+
+      # Install any declared ROS dependencies before building, same as a
+      # fresh clone would need to.
+      - name: rosdep install
+        run: |
+          docker compose exec -T ros2 bash -c "
+            sudo rosdep init 2>/dev/null || true
+            rosdep update
+            rosdep install --from-paths . --ignore-src -r -y
+          "
+
+      - name: colcon build
+        run: |
+          docker compose exec -T ros2 bash -c "
+            source /opt/ros/humble/setup.bash &&
+            colcon build --symlink-install --event-handlers console_direct+
+          "
+
+      - name: colcon test
+        run: |
+          docker compose exec -T ros2 bash -c "
+            source /opt/ros/humble/setup.bash &&
+            source install/setup.bash &&
+            colcon test --event-handlers console_direct+ &&
+            colcon test-result --verbose
+          "
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down
