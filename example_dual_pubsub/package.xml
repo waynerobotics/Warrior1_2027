@@ -3,9 +3,15 @@
 <package format="3">
   <name>example_dual_pubsub</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Simple ROS 2 publisher and subscriber examples.</description>
   <maintainer email="alimyust@gmail.com">vscode</maintainer>
   <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
