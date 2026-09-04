@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'warrior1_localization'
+package_name = 'example_dual_pubsub'
 
 setup(
     name=package_name,
@@ -13,7 +13,7 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
+    maintainer='vscode',
     maintainer_email='alimyust@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',

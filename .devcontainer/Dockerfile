@@ -102,6 +102,9 @@ ENV LIBGL_ALWAYS_SOFTWARE=1
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod 755 /usr/local/bin/entrypoint.sh
 
+RUN mkdir -p /workspaces/warrior \
+    && chown -R $USERNAME:$USER_GID /workspaces
+
 WORKDIR /workspaces/warrior
 
 # Everything after this line, and every container started from this
