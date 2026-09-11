@@ -33,12 +33,21 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
-# ROS 2 desktop tools (RViz2, etc.), TurtleBot3, and modern Gazebo (ros-gz)
+# ROS 2 desktop tools (RViz2, etc.), TurtleBot3
 # ---------------------------------------------------------------------------
 RUN apt-get update && apt-get install -y \
     ros-humble-desktop \
     ros-humble-turtlebot3 \
-    ros-humble-ros-gz \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# Installing Gazebo Harmonic 
+# ---------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y curl lsb-release gnupg \
+    && curl -fsSL https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y gz-harmonic \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
@@ -82,9 +91,7 @@ RUN mkdir -p /var/log/supervisor
 # LIBGL_ALWAYS_SOFTWARE here — those are runtime-overridable via ENV below
 # instead. A value exported from .bashrc would re-clobber whatever
 # docker-compose's `environment:` block sets, since .bashrc runs *after*
-# a process already has its correct environment. That was a real bug here
-# during development: DISPLAY looked right at container start but
-# silently reverted the moment an interactive shell opened.
+# a process already has its correct environment.
 RUN echo "source /opt/ros/humble/setup.bash" >> /home/$USERNAME/.bashrc \
     && chown $USER_UID:$USER_GID /home/$USERNAME/.bashrc
 
