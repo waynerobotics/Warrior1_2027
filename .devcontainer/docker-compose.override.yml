@@ -1,12 +1,3 @@
+# No GPU passthrough available/selected — software rendering + noVNC.
 services:
-  ros2:
-    devices:
-      - /dev/dri:/dev/dri
-    group_add:
-      - video
-      - render
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-    environment:
-      DISPLAY: ${DISPLAY}
-      LIBGL_ALWAYS_SOFTWARE: ""
+  ros2: {}
