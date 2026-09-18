@@ -65,28 +65,6 @@ RUN apt-get update && apt-get install -y \
     x11-apps \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------------------------------------------------------------------------
-# Virtual display + browser-based VNC (noVNC): the universal-fallback GUI
-# path. Open http://localhost:6080 in a browser. Only actually started at
-# runtime if DISPLAY_MODE=novnc (see entrypoint.sh) — on profiles that use
-# native X11/WSLg passthrough instead, these processes are simply never
-# launched.
-# ---------------------------------------------------------------------------
-RUN apt-get update && apt-get install -y \
-    xvfb \
-    x11vnc \
-    fluxbox \
-    novnc \
-    websockify \
-    supervisor \
-    && rm -rf /var/lib/apt/lists/*
-
-# NOTE: build context is `.` (the .devcontainer folder itself — see
-# docker-compose.yml), so these COPY sources are bare filenames, not
-# prefixed with .devcontainer/.
-COPY supervisord.conf /etc/supervisor/supervisord.conf
-RUN mkdir -p /var/log/supervisor
-
 # Source ROS for every shell. Deliberately NOT exporting DISPLAY or
 # LIBGL_ALWAYS_SOFTWARE here — those are runtime-overridable via ENV below
 # instead. A value exported from .bashrc would re-clobber whatever
@@ -95,21 +73,19 @@ RUN mkdir -p /var/log/supervisor
 RUN echo "source /opt/ros/humble/setup.bash" >> /home/$USERNAME/.bashrc \
     && chown $USER_UID:$USER_GID /home/$USERNAME/.bashrc
 
-# Safe, no-GPU/noVNC defaults. docker-compose.override.yml (written by
-# setup.sh) overrides these per-machine at container-creation time — that
-# override sticks, because ENV sits below it in Docker's precedence order,
-# unlike a .bashrc export which would sit above it.
+# Software-rendering defaults. docker-compose.override.yml (written by
+# setup.sh) supplies the host display socket and repeats these settings at
+# container-creation time.
 ENV TURTLEBOT3_MODEL=burger
 ENV DISPLAY=:1
 ENV LIBGL_ALWAYS_SOFTWARE=1
-
 # Entrypoint must be copied and made executable while still root — once
 # USER switches to a non-root account, this user has no write access to
 # /usr/local/bin, so this block must come BEFORE the USER instruction.
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod 755 /usr/local/bin/entrypoint.sh
 
-WORKDIR /workspaces/warrior
+WORKDIR /ros2_ws/src/Warrior1_2027
 
 # Everything after this line, and every container started from this
 # image, runs as $USERNAME — keep USER as the last filesystem-affecting
@@ -118,3 +94,8 @@ USER $USERNAME
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/bin/bash"]
+
+
+##Things to add
+#sudo apt update && sudo apt install nano
+#

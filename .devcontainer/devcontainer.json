@@ -6,7 +6,7 @@
         "docker-compose.override.yml"
     ],
     "service": "ros2",
-    "workspaceFolder": "/workspaces/warrior",
+    "workspaceFolder": "/ros2_ws/src/Warrior1_2027",
 
     // Runs on the host before every build/rebuild, so "Reopen in
     // Container" / "Rebuild Container" is still the only command you
@@ -16,14 +16,6 @@
     // `.devcontainer/setup.sh` manually from a WSL2 terminal once
     // before rebuilding.
     "initializeCommand": "bash .devcontainer/setup.sh",
-
-    "forwardPorts": [6080],
-    "portsAttributes": {
-        "6080": {
-            "label": "Robot GUI (noVNC) — open in browser",
-            "onAutoForward": "openBrowser"
-        }
-    },
 
     "customizations": {
         "vscode": {
@@ -38,6 +30,7 @@
     "remoteUser": "vscode"
 
     // Manual overrides (re-run, then Rebuild Container):
-    //   ./setup.sh --accel=software   force software rendering
-    //   ./setup.sh --gui=false        headless, no GUI stack at all
+    //   ./setup.sh --accel=software  force CPU/llvmpipe rendering
+    //   ./setup.sh --accel=hardware  enable supported GPU passthrough
+    //   ./setup.sh --gui=false       headless, no GUI applications
 }

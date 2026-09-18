@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ..:/workspaces/warrior:cached
-    working_dir: /workspaces/warrior
+      - ..:/ros2_ws/src/Warrior1_2027:cached
+    working_dir: /ros2_ws/src/Warrior1_2027
     ports:
       - "6080:6080"   # noVNC — harmless to publish even when unused (native/WSLg profiles)
     environment:

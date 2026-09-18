@@ -1,16 +1,21 @@
 
 
 
-This docker setup is designed to allow anyone to use this environment for development. The Dockerfile consists of ROS2 Humble, as well as 
-many basic tools like Gazebo and Rviz2. Docker compose is used to launch the environment, taking the config from docker-compose.yml and using the entrypoint.sh as a means to launch the setup script.
+This Docker setup provides ROS 2 Humble, Gazebo, and RViz2 for development. GUI applications use the host X11/WSLg display directly while Mesa is forced to software rendering (llvmpipe) inside the container. There is no virtual display, VNC server, browser relay, or forwarded GUI port.
 
 For execution, enter the following commands:
 
-(In .devcontainer)
+From the repository root:
 
-xhost +local:docker # Gives docker access to use ports for GUI on your home machine from the container
+On native Linux, allow local Docker clients to connect to the X server:
+
+xhost +local:docker
 
 docker compose build --no-cache # Builds the docker image from the Dockerfile, and docker-compose.yml
 
 docker compose up -d --force-recreate # Runs the container in the background (-d) so the terminal can be used for other things
+
+The setup script runs automatically before a devcontainer rebuild. It detects native Linux X11 or WSLg and configures the corresponding display mounts. Software rendering is the default. To enable supported GPU passthrough, run `.devcontainer/setup.sh --accel=hardware` before rebuilding; this adds `/dev/dri` on native Linux or `/dev/dxg` on WSL2 and removes the llvmpipe override. To force CPU rendering again, run `.devcontainer/setup.sh --accel=software`.
+
+For a headless session, run `.devcontainer/setup.sh --gui=false` before rebuilding. macOS Docker Desktop requires a separately configured XQuartz display socket; without one, the container remains headless because this setup intentionally has no noVNC fallback.
 

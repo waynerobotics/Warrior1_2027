@@ -1,5 +1,5 @@
 #!/bin/bash
-# Detects this machine's platform + GPU capability and writes:
+# Detects this machine's display server and writes:
 #   .devcontainer/.env
 #   .devcontainer/docker-compose.override.yml
 # so the shared devcontainer.json / docker-compose.yml never need editing.
@@ -9,17 +9,26 @@
 #
 # Flags (all optional — auto-detected if omitted):
 #   --gui=true|false        Enable any GUI at all (default: true)
-#   --accel=auto|software   Force software rendering even if a GPU is found
+#   --accel=software|hardware
+#                          Select the renderer (default: software).
 set -e
 cd "$(dirname "$0")"
 
 ENABLE_GUI="true"
-FORCE_SOFTWARE="false"
+ACCEL="software"
+if [ -z "${ACCEL_MODE:-}" ] && [ -f .env ]; then
+  SAVED_ACCEL="$(sed -n 's/^ACCEL_MODE=//p' .env | head -n 1)"
+  case "$SAVED_ACCEL" in
+    software|hardware) ACCEL="$SAVED_ACCEL" ;;
+  esac
+fi
 for arg in "$@"; do
     case "$arg" in
         --gui=false) ENABLE_GUI="false" ;;
         --gui=true) ENABLE_GUI="true" ;;
-        --accel=software) FORCE_SOFTWARE="true" ;;
+    --accel=software) ACCEL="software" ;;
+    --accel=hardware) ACCEL="hardware" ;;
+    *) echo "ERROR: unknown option: $arg" >&2; exit 2 ;;
     esac
 done
 
@@ -29,37 +38,41 @@ if [ "$OS" = "Linux" ] && grep -qi microsoft /proc/version 2>/dev/null; then
     IS_WSL2="true"
 fi
 
-DISPLAY_MODE="novnc"
-PROFILE="software-novnc"
+DISPLAY_MODE="none"
+PROFILE="headless"
+DISPLAY_VALUE="${DISPLAY:-}"
+WAYLAND_DISPLAY_VALUE="${WAYLAND_DISPLAY:-}"
+XDG_RUNTIME_DIR_VALUE="${XDG_RUNTIME_DIR:-}"
 
-if [ "$FORCE_SOFTWARE" = "true" ]; then
-    PROFILE="software-novnc"
+if [ "$ENABLE_GUI" = "true" ] && [ "$IS_WSL2" = "true" ] && [ -d /mnt/wslg ] && [ -d /tmp/.X11-unix ]; then
+  if [ "$ACCEL" = "hardware" ] && [ -e /dev/dxg ]; then
+    PROFILE="hardware-native-wslg"
+  else
+    PROFILE="software-native-wslg"
+  fi
+  DISPLAY_MODE="native"
+  DISPLAY_VALUE="${DISPLAY_VALUE:-:0}"
+  WAYLAND_DISPLAY_VALUE="${WAYLAND_DISPLAY_VALUE:-wayland-0}"
+  XDG_RUNTIME_DIR_VALUE="/mnt/wslg/runtime-dir"
 
-elif [ "$OS" = "Linux" ] && [ "$IS_WSL2" = "false" ]; then
-    # Native Linux
-    if [ -e /dev/dri/renderD128 ] && [ -d /tmp/.X11-unix ]; then
-        PROFILE="linux-gpu-native-x11"
-        DISPLAY_MODE="native"
-    elif [ -e /dev/dri/renderD128 ]; then
-        PROFILE="linux-gpu-novnc"
-    fi
-
-elif [ "$IS_WSL2" = "true" ]; then
-    # Windows via WSL2
-    if [ -e /dev/dxg ] && [ -d /mnt/wslg ]; then
-        PROFILE="wsl2-gpu-wslg-native"
-        DISPLAY_MODE="native"
-    elif [ -e /dev/dxg ]; then
-        PROFILE="wsl2-gpu-novnc"
-    fi
+elif [ "$ENABLE_GUI" = "true" ] && [ "$OS" = "Linux" ] && [ -d /tmp/.X11-unix ]; then
+  if [ "$ACCEL" = "hardware" ] && [ -e /dev/dri/renderD128 ]; then
+    PROFILE="hardware-native-x11"
+  else
+    PROFILE="software-native-x11"
+  fi
+  DISPLAY_MODE="native"
+  DISPLAY_VALUE="${DISPLAY_VALUE:-:0}"
 fi
-# macOS (Darwin) always falls through to software-novnc — Docker Desktop
-# for Mac has no GPU passthrough mechanism.
 
-echo "Detected: OS=$OS  WSL2=$IS_WSL2  ->  profile=$PROFILE  display_mode=$DISPLAY_MODE"
+if [ "$ACCEL" = "hardware" ] && [[ "$PROFILE" != hardware-* ]]; then
+  echo "WARNING: hardware acceleration was requested but no supported GPU device was found; using software rendering." >&2
+fi
+
+echo "Detected: OS=$OS  WSL2=$IS_WSL2  ->  profile=$PROFILE  display_mode=$DISPLAY_MODE  accel=$ACCEL"
 
 # --- X11 permission grant (native Linux profile only) ----------------------
-if [ "$PROFILE" = "linux-gpu-native-x11" ]; then
+if [ "$PROFILE" = "software-native-x11" ]; then
     if command -v xhost >/dev/null 2>&1; then
         if xhost +local:docker >/dev/null 2>&1; then
             echo "xhost: granted local Docker containers access to your X server"
@@ -79,12 +92,30 @@ fi
 cat > .env <<EOF
 ENABLE_GUI=$ENABLE_GUI
 DISPLAY_MODE=$DISPLAY_MODE
+ACCEL_MODE=$ACCEL
+DISPLAY=$DISPLAY_VALUE
+WAYLAND_DISPLAY=$WAYLAND_DISPLAY_VALUE
+XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR_VALUE
 EOF
 
 case "$PROFILE" in
 
-linux-gpu-native-x11)
-    cat > docker-compose.override.yml <<'EOF'
+software-native-x11)
+  cat > docker-compose.override.yml <<EOF
+services:
+  ros2:
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    environment:
+      DISPLAY: $DISPLAY_VALUE
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      GALLIUM_DRIVER: llvmpipe
+      MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+EOF
+    ;;
+
+hardware-native-x11)
+  cat > docker-compose.override.yml <<EOF
 services:
   ros2:
     devices:
@@ -95,53 +126,42 @@ services:
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     environment:
-      DISPLAY: ${DISPLAY}
+      DISPLAY: $DISPLAY_VALUE
       LIBGL_ALWAYS_SOFTWARE: ""
 EOF
     ;;
 
-linux-gpu-novnc)
-    cat > docker-compose.override.yml <<'EOF'
+software-native-wslg)
+  cat > docker-compose.override.yml <<EOF
 services:
   ros2:
-    devices:
-      - /dev/dri:/dev/dri
-    group_add:
-      - video
-      - render
-    environment:
-      LIBGL_ALWAYS_SOFTWARE: ""
-EOF
-    ;;
-
-wsl2-gpu-wslg-native)
-    cat > docker-compose.override.yml <<'EOF'
-services:
-  ros2:
-    devices:
-      - /dev/dxg:/dev/dxg
     volumes:
-      - /usr/lib/wsl:/usr/lib/wsl:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /mnt/wslg:/mnt/wslg:rw
     environment:
-      DISPLAY: ${DISPLAY}
-      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY}
-      XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR}
-      LD_LIBRARY_PATH: /usr/lib/wsl/lib
-      LIBGL_ALWAYS_SOFTWARE: ""
+      DISPLAY: $DISPLAY_VALUE
+      WAYLAND_DISPLAY: $WAYLAND_DISPLAY_VALUE
+      XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR_VALUE
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      GALLIUM_DRIVER: llvmpipe
+      MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
 EOF
     ;;
 
-wsl2-gpu-novnc)
-    cat > docker-compose.override.yml <<'EOF'
+hardware-native-wslg)
+  cat > docker-compose.override.yml <<EOF
 services:
   ros2:
     devices:
       - /dev/dxg:/dev/dxg
     volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /mnt/wslg:/mnt/wslg:rw
       - /usr/lib/wsl:/usr/lib/wsl:ro
     environment:
+      DISPLAY: $DISPLAY_VALUE
+      WAYLAND_DISPLAY: $WAYLAND_DISPLAY_VALUE
+      XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR_VALUE
       LD_LIBRARY_PATH: /usr/lib/wsl/lib
       LIBGL_ALWAYS_SOFTWARE: ""
 EOF
@@ -149,7 +169,8 @@ EOF
 
 *)
     cat > docker-compose.override.yml <<'EOF'
-# No GPU passthrough available/selected — software rendering + noVNC.
+# No host display socket was detected. GUI applications require a local
+# X11/WSLg session; no virtual display or browser relay is started.
 services:
   ros2: {}
 EOF
