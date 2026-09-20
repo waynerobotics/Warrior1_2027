@@ -1,12 +1,14 @@
 services:
   ros2:
+    devices:
+      - /dev/dxg:/dev/dxg
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /mnt/wslg:/mnt/wslg:rw
+      - /usr/lib/wsl:/usr/lib/wsl:ro
     environment:
       DISPLAY: :0
       WAYLAND_DISPLAY: wayland-0
       XDG_RUNTIME_DIR: /mnt/wslg/runtime-dir
-      LIBGL_ALWAYS_SOFTWARE: "1"
-      GALLIUM_DRIVER: llvmpipe
-      MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      LIBGL_ALWAYS_SOFTWARE: ""

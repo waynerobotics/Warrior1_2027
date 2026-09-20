@@ -1,3 +1,11 @@
 {
-    "cmake.sourceDirectory": "/home/alimyust/ros2_ws/src/Warrior1_2027/warrior1_bringup"
+    "cmake.sourceDirectory": "/home/alimyust/ros2_ws/src/Warrior1_2027/warrior1_bringup",
+    "python.autoComplete.extraPaths": [
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
 }
