@@ -6,8 +6,8 @@ services:
     volumes:
       - ..:/ros2_ws/src/Warrior1_2027:cached
     working_dir: /ros2_ws/src/Warrior1_2027
-    ports:
-      - "6080:6080"   # noVNC — harmless to publish even when unused (native/WSLg profiles)
+    # ports:
+      # - "6080:6080"   # noVNC — harmless to publish even when unused (native/WSLg profiles)
     environment:
       # Overridden per-machine by setup.sh via docker-compose.override.yml.
       # These are the safe, works-everywhere defaults.
