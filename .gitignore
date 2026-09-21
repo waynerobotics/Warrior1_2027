@@ -52,5 +52,5 @@ CATKIN_IGNORE
 
 
 # Docker stuff
-# .env
-# .devcontainer/docker-compose.override.yml
+.env
+.devcontainer/docker-compose.override.yml
