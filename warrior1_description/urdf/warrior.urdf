@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+
+<robot name="warrior" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:property name="base_width" value="0.3" />
+<xacro:property name="base_length" value="0.3" />
+<xacro:property name="base_height" value="0.15" />
+
+<xacro:property name="diff_wheel_radius" value="0.05" />
+<xacro:property name="diff_wheel_width" value="0.02" />
+<xacro:property name="diff_wheel_y" value="0.175" />
+<xacro:property name="caster_wheel_radius" value="0.05" />
+
+<xacro:property name="lidar_radius" value="0.05" />
+<xacro:property name="lidar_length" value="0.04" />
+
+<xacro:property name="camera_width" value="0.02" />
+<xacro:property name="camera_height" value="0.075" />
+<xacro:property name="camera_length" value="0.075" />
+
+<xacro:property name="imu_length" value="0.05" />
+<xacro:property name="imu_width" value="0.05" />
+<xacro:property name="imu_height" value="0.02" />
+
+  <material name="white">
+    <color rgba="1 1 1 1"/>
+  </material>
+
+  <material name="orange">
+    <color rgba="1 0.3 0.1 1"/>
+  </material>
+
+  <material name="blue">
+    <color rgba="0.2 0.2 1 1"/>
+  </material>
+
+  <material name="black">
+    <color rgba="0 0 0 1"/>
+  </material>
+  
+<xacro:include filename="$(find warrior1_description)/xacro/inertial_macros.xacro"/>
+<xacro:include filename="$(find warrior1_description)/xacro/diff_wheel.xacro"/>
+<xacro:include filename="$(find warrior1_description)/xacro/caster_wheel.xacro"/>
+
+<!-- Robot Base -->
+<link name="base_link"> </link>
+
+<joint name="chassis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis"/>
+    <origin xyz="-0.1 0 0"/>
+</joint>
+
+<!-- Base Chassis -->
+<link name="chassis">
+    <visual>
+        <origin xyz="${base_height} 0 ${base_height/2}" rpy="0 0 0"/>
+        <geometry>
+            <box size="${base_length} ${base_width} ${base_height}"/>
+        </geometry>
+        <material name="white"/>
+    </visual>
+
+    <collision>
+        <origin xyz="${base_height} 0 ${base_height/2}" rpy="0 0 0"/>
+        <geometry>
+            <box size="${base_length} ${base_width} ${base_height}"/>
+        </geometry>
+    </collision>
+
+    <xacro:inertial_box mass="0.5" x="0.3" y="0.3" z="0.15">
+      <origin xyz="${base_height} 0 ${base_height/2}" rpy="0 0 0"/>
+    </xacro:inertial_box>
+</link>
+
+<!-- Diff Wheels -->
+<xacro:diff_wheel  
+    prefix="left" 
+    parent_link="base_link"
+    x="0" y="0" z="0"
+    roll="0" pitch="0" yaw="0" 
+/>
+
+<!-- Caster Wheels -->
+<joint name="caster_wheel_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="caster_wheel"/>
+    <origin xyz="0.24 0 0" rpy="0 0 0"/>
+</joint>
+
+ <link name="caster_wheel">
+    <visual>
+        <geometry>
+            <sphere radius="${caster_wheel_radius}"/>
+        </geometry>
+        <material name="white"/>
+    </visual>
+    <collision>
+        <geometry>
+            <sphere radius="${caster_wheel_radius}"/>
+        </geometry>
+    </collision>
+    <xacro:inertial_sphere mass="10" radius="${caster_wheel_radius}">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </xacro:inertial_sphere>
+</link>
+
+</robot>
