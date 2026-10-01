@@ -39,6 +39,17 @@ def generate_launch_description():
         output='screen'
     )
 
+    joint_state_publisher = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
+        parameters=[
+            {
+                'robot_description': robot_description
+            }
+        ],
+        output='screen'
+    )
+
     rviz = Node(
         package='rviz2',
         executable='rviz2',
@@ -50,6 +61,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        joint_state_publisher,
         robot_state_publisher,
         rviz
     ])

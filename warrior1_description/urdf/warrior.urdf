@@ -73,10 +73,11 @@
     </xacro:inertial_box>
 </link>
 
+
 <!-- Diff Wheels -->
 <xacro:diff_wheel  
     prefix="left" 
-    parent_link="base_link"
+    parent_link="chassis"
     x="0" y="0" z="0"
     roll="0" pitch="0" yaw="0" 
 />
