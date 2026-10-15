@@ -12,7 +12,7 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 install (
-  DIRECTORY launch meshes urdf xacro rviz2
+  DIRECTORY launch urdf xacro rviz2
   DESTINATION share/${PROJECT_NAME}/
 )
 
