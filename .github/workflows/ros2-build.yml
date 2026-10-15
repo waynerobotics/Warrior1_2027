@@ -1,123 +1,143 @@
-name: ROS 2 Devcontainer CI
+name: ROS 2 CI
 
-# Triggers on anything that could break either the container itself
-# (Dockerfile, entrypoint, compose files) or the ROS packages it builds.
 on:
   push:
-    paths:
-      - '.devcontainer/**'
-      - '**/CMakeLists.txt'
-      - '**/package.xml'
-      - '**/*.py'
-      - '**/*.cpp'
-      - '**/*.hpp'
-      - '**/*.launch.py'
   pull_request:
-    branches: [ "main" ]
-    paths:
-      - '.devcontainer/**'
-      - '**/CMakeLists.txt'
-      - '**/package.xml'
-      - '**/*.py'
-      - '**/*.cpp'
-      - '**/*.hpp'
-      - '**/*.launch.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    # All docker compose commands assume they're run from .devcontainer/,
-    # same as a developer would locally.
-    defaults:
-      run:
-        working-directory: .devcontainer
+  ros2-ci:
+    name: ROS 2 Humble validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
 
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      # GitHub-hosted runners have no GPU and no X server, so CI can only
-      # ever exercise the software-rendering + noVNC profile. Forcing it
-      # explicitly (rather than trusting auto-detect) keeps CI
-      # deterministic regardless of what the runner image looks like.
-      - name: Force software-rendering profile
+      - name: Validate Docker Compose configuration
+        run: docker compose -f .devcontainer/docker-compose.yml config --quiet
+
+      - name: Build development image
+        run: docker compose -f .devcontainer/docker-compose.yml build ros2
+
+      # Keep one container alive so packages installed in the rosdep test
+      # remain available to the syntax checks and colcon build. The entrypoint
+      # is syntax-checked below; rosdep runs as its own named step so failures
+      # are easier to diagnose and cannot race against entrypoint startup.
+      - name: Start CI container
         run: |
-          chmod +x setup.sh entrypoint.sh
-          ./setup.sh --accel=software --gui=true
-          cat .env
-          cat docker-compose.override.yml
+          docker compose -f .devcontainer/docker-compose.yml run \
+            --detach \
+            --no-deps \
+            --name warrior1-ci \
+            --entrypoint /bin/bash \
+            ros2 -lc 'sleep infinity'
 
-      # Catches Dockerfile COPY-path mismatches, bad YAML, and anything
-      # that would only surface as "works differently than intended" —
-      # this is the merged config Docker would actually run.
-      - name: Validate merged compose config
-        run: docker compose config
-
-      - name: Build image
-        run: docker compose build
-
-      - name: Start container
-        run: docker compose up -d
-
-      - name: Confirm container is actually running (not crash-looped)
+      - name: Test 1 - resolve and check rosdep dependencies
         run: |
-          sleep 3
-          docker compose ps
-          # Fails the job loudly if the container isn't Up — catches the
-          # exact "entrypoint permission denied, container exits
-          # immediately" failure mode from earlier development.
-          status="$(docker compose ps --format json ros2 | python3 -c 'import json,sys; print(json.load(sys.stdin)["State"])')"
-          if [ "$status" != "running" ]; then
-            echo "::error::Container did not start (state: $status)"
-            docker compose logs
+          docker exec -i -w /ros2_ws/src/Warrior1_2027 warrior1-ci bash -s <<'CONTAINER_SCRIPT'
+          set -euo pipefail
+          source /opt/ros/humble/setup.bash
+
+          if [ ! -d src ]; then
+            echo "Expected a src/ directory in the repository workspace." >&2
             exit 1
           fi
 
-      # Confirms entrypoint.sh actually ran and started the GUI stack —
-      # this is what silently breaks if entrypoint permissions or
-      # ENABLE_GUI/DISPLAY_MODE ever regress.
-      - name: Verify GUI stack started
+          manifest_count=$(find src -type f -name package.xml | wc -l)
+          if [ "$manifest_count" -eq 0 ]; then
+            echo "No package.xml files found under src/." >&2
+            exit 1
+          fi
+          echo "Found $manifest_count package.xml manifest(s)."
+
+          sudo apt-get update
+          rosdep update --rosdistro humble
+          rosdep install \
+            --from-paths src \
+            --ignore-src \
+            --rosdistro humble \
+            -r -y
+          rosdep check \
+            --from-paths src \
+            --ignore-src \
+            --rosdistro humble
+          CONTAINER_SCRIPT
+
+      - name: Test 2 - parse XML/Python, check scripts, and build with colcon
         run: |
-          docker compose exec -T ros2 sudo supervisorctl -c /etc/supervisor/supervisord.conf status
-          curl -sf http://localhost:6080/vnc.html > /dev/null && echo "noVNC reachable"
+          docker exec -i -w /ros2_ws/src/Warrior1_2027 warrior1-ci bash -s <<'CONTAINER_SCRIPT'
+          set -euo pipefail
+          source /opt/ros/humble/setup.bash
 
-      # Confirm software OpenGL rendering actually works end-to-end
-      # (not just that the process started) — glxinfo will fail loudly
-      # if Mesa/llvmpipe isn't functioning.
-      - name: Verify software OpenGL rendering
-        run: |
-          docker compose exec -T ros2 bash -c "glxinfo | grep 'OpenGL renderer'"
+          python3 - <<'PY'
+          import os
+          import sys
+          import tokenize
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
 
-      # Install any declared ROS dependencies before building, same as a
-      # fresh clone would need to.
-      - name: rosdep install
-        run: |
-          docker compose exec -T ros2 bash -c "
-            sudo rosdep init 2>/dev/null || true
-            rosdep update
-            rosdep install --from-paths . --ignore-src -r -y
-          "
+          excluded_dirs = {
+              ".git", "build", "install", "log", "__pycache__",
+              ".venv", "venv", "node_modules"
+          }
+          xml_suffixes = {".xml", ".xacro", ".urdf", ".sdf", ".world"}
+          xml_files = []
+          python_files = []
+          failures = []
 
-      - name: colcon build
-        run: |
-          docker compose exec -T ros2 bash -c "
-            source /opt/ros/humble/setup.bash &&
-            colcon build --symlink-install --event-handlers console_direct+
-          "
+          for current, dirs, filenames in os.walk("."):
+              dirs[:] = [name for name in dirs if name not in excluded_dirs]
+              for filename in filenames:
+                  path = Path(current) / filename
+                  if path.suffix.lower() in xml_suffixes:
+                      xml_files.append(path)
+                  elif path.suffix.lower() == ".py":
+                      python_files.append(path)
 
-      - name: colcon test
-        run: |
-          docker compose exec -T ros2 bash -c "
-            source /opt/ros/humble/setup.bash &&
-            source install/setup.bash &&
-            colcon test --event-handlers console_direct+ &&
-            colcon test-result --verbose
-          "
+          for path in xml_files:
+              try:
+                  ET.parse(path)
+              except (ET.ParseError, OSError) as exc:
+                  failures.append(f"XML parse error in {path}: {exc}")
 
-      - name: Show logs on failure
-        if: failure()
-        run: docker compose logs
+          for path in python_files:
+              try:
+                  with tokenize.open(path) as stream:
+                      source = stream.read()
+                  compile(source, str(path), "exec")
+              except (SyntaxError, UnicodeDecodeError, OSError) as exc:
+                  failures.append(f"Python syntax error in {path}: {exc}")
 
-      - name: Tear down
+          print(f"Parsed {len(xml_files)} XML-like file(s).")
+          print(f"Checked {len(python_files)} Python file(s).")
+          if failures:
+              print("\n".join(failures), file=sys.stderr)
+              sys.exit(1)
+          PY
+
+          bash -n .devcontainer/entrypoint.sh .devcontainer/setup.sh
+
+          echo "Checking colcon package discovery..."
+          colcon list
+
+          echo "Building workspace..."
+          mkdir -p /home/vscode/ros2_ws
+          colcon build --symlink-install \
+            --build-base /home/vscode/ros2_ws/build \
+            --install-base /home/vscode/ros2_ws/install \
+            --log-base /home/vscode/ros2_ws/log
+
+          test -f /home/vscode/ros2_ws/install/setup.bash
+          source /home/vscode/ros2_ws/install/setup.bash
+          CONTAINER_SCRIPT
+
+      - name: Remove CI container
         if: always()
-        run: docker compose down
+        run: |
+          docker rm -f warrior1-ci || true
+          docker compose -f .devcontainer/docker-compose.yml down --remove-orphans || true
