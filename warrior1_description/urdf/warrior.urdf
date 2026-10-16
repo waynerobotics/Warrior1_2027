@@ -41,6 +41,7 @@
 <xacro:include filename="$(find warrior1_description)/xacro/inertial_macros.xacro"/>
 <xacro:include filename="$(find warrior1_description)/xacro/diff_wheel.xacro"/>
 <xacro:include filename="$(find warrior1_description)/xacro/caster_wheel.xacro"/>
+<xacro:include filename="$(find warrior1_description)/xacro/lidar.xacro"/>
 
 <!-- Robot Base -->
 <link name="base_link"> </link>
