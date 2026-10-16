@@ -42,6 +42,7 @@
 <xacro:include filename="$(find warrior1_description)/xacro/diff_wheel.xacro"/>
 <xacro:include filename="$(find warrior1_description)/xacro/caster_wheel.xacro"/>
 <xacro:include filename="$(find warrior1_description)/xacro/lidar.xacro"/>
+<xacro:include filename="$(find warrior1_description)/xacro/imu.urdf.xacro"/>
 
 <!-- Robot Base -->
 <link name="base_link"> </link>
@@ -106,5 +107,13 @@
         <origin xyz="0 0 0" rpy="0 0 0"/>
     </xacro:inertial_sphere>
 </link>
+
+<!-- IMU -->
+<xacro:imu
+    prefix="main"
+    parent_link="chassis"
+    x="0.15" y="0" z="0.16"
+    roll="0" pitch="0" yaw="0"
+/>
 
 </robot>
