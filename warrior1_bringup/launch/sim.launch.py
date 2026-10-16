@@ -66,11 +66,14 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 4. Bridge Gazebo's clock to ROS so use_sim_time works
-    clock_bridge = Node(
+    # 4. Bridge Gazebo's clock and LiDAR measurements to ROS
+    gazebo_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+        arguments=[
+            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'
+        ],
         output='screen'
     )
 
@@ -78,5 +81,5 @@ def generate_launch_description():
         robot_state_publisher,
         gazebo,
         spawn_robot,
-        clock_bridge
+        gazebo_bridge
     ])
