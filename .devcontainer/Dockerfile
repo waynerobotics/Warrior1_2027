@@ -42,19 +42,17 @@ RUN groupadd --gid $USER_GID $USERNAME \
         libgl1-mesa-dri \
         libglx-mesa0 \
         libegl1 \
-        x11-apps \
-    && rm -rf /var/lib/apt/lists/*
-
+        x11-apps
 # ---------------------------------------------------------------------------
 # Shell configuration and Environment Variables
 # ---------------------------------------------------------------------------
 RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc \
     && echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
-ENV TURTLEBOT3_MODEL=burger
+ENV TURTLEBOT3_MODEL=burger_cam
 ENV DISPLAY=:1
 ENV LIBGL_ALWAYS_SOFTWARE=1
-
+ 
 # ---------------------------------------------------------------------------
 # Entrypoint and Workspace Setup
 # ---------------------------------------------------------------------------
@@ -65,6 +63,7 @@ WORKDIR /ros2_ws
 RUN mkdir -p /ros2_ws/src/Warrior1_2027 \
     && chown -R $USER_UID:$USER_GID /ros2_ws
 WORKDIR /ros2_ws/src/Warrior1_2027
+ 
 
 USER $USERNAME
 
