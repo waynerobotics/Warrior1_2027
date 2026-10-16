@@ -54,3 +54,5 @@ CATKIN_IGNORE
 # Docker stuff
 .env
 .devcontainer/docker-compose.override.yml
+# VS Code C/C++ IntelliSense database
+.vscode/browse.vc.db*
