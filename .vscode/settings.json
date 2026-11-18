@@ -1,12 +1,10 @@
 {
-    "cmake.sourceDirectory": "/home/alimyust/ros2_ws/src/Warrior1_2027/warrior1_bringup",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.pixi/envs/default/bin/python",
     "python.autoComplete.extraPaths": [
-        "/opt/ros/humble/lib/python3.10/site-packages",
-        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+        "${workspaceFolder}/.pixi/envs/default/lib/python3.12/site-packages"
     ],
     "python.analysis.extraPaths": [
-        "/opt/ros/humble/lib/python3.10/site-packages",
-        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+        "${workspaceFolder}/.pixi/envs/default/lib/python3.12/site-packages"
     ],
-    "ROS2.distro": "humble"
+    "ROS2.distro": "jazzy"
 }

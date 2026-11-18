@@ -2,15 +2,26 @@
 
 ROS 2 development environment and software stack for the Wayne State Robotics Warrior platform.
 
-The repository includes a Docker-based development environment providing **ROS 2 Humble, Gazebo, and RViz2**. The environment is designed to provide a consistent setup across development machines while allowing GUI applications to run directly through the host display.
+The project targets **ROS 2 Jazzy** and **Gazebo Harmonic**. The development environment is managed with [**pixi**](https://pixi.sh), which installs ROS 2, Gazebo, RViz2, and all build tools into a self-contained folder inside the repository (`.pixi/`) using packages from [RoboStack](https://robostack.github.io). No system-wide ROS install, `/opt/ros`, `apt` ROS repositories, or Docker are required, and every developer gets the exact same package versions (pinned in `pixi.lock`).
+
+> **Legacy Docker setup:** The `.devcontainer/` folder contains the old ROS 2 Humble Docker environment. It is kept for reference only and is no longer maintained. Use pixi.
 
 ## Getting Started
 
-If you want to experiment with the repository or Docker environment, **fork the repository first** and clone your fork.
+If you want to experiment with the repository, **fork the repository first** and clone your fork.
+
+### Supported platforms
+
+| Platform | Notes |
+| --- | --- |
+| Ubuntu 24.04 (or other modern Linux) | Recommended |
+| Windows 11 | Use WSL2 (Ubuntu 24.04), see below |
+| Linux ARM64 (e.g. Jetson / Raspberry Pi) | Supported by the lockfile |
+| macOS (Apple Silicon) | Supported by the lockfile, less tested |
 
 ### Windows 11 Users
 
-If you are using Windows 11, the project uses **WSL (Windows Subsystem for Linux)** rather than running Docker directly through Windows.
+If you are using Windows 11, work inside **WSL (Windows Subsystem for Linux)**.
 
 If WSL is not already installed, open PowerShell or Windows Terminal and run:
 
@@ -24,234 +35,126 @@ After installation, enter WSL:
 wsl
 ```
 
-### Install Docker in WSL
+All remaining commands in this README are run inside WSL. GUI apps (Gazebo, RViz2) display through WSLg automatically.
 
-This project uses **Docker Engine installed directly inside WSL**. **Docker Desktop is not required and should not be used for this setup.**
+> **WSL users:** do not clone the repository inside `/mnt/...`. Store the project inside the WSL filesystem (e.g. under `~`) for much better performance.
 
-The exact Docker installation procedure depends on your WSL Linux distribution. For Ubuntu, follow Docker's installation instructions for Ubuntu.
-
-A guide for installing Docker directly in WSL without Docker Desktop is available here:
-
-[Install Docker directly in WSL without Docker Desktop](https://daniel.es/blog/how-to-install-docker-in-wsl-without-docker-desktop/?utm_source=chatgpt.com)
-
-After installing Docker, verify that it is working:
+### Install pixi
 
 ```bash
-docker run hello-world
+curl -fsSL https://pixi.sh/install.sh | sh
 ```
 
-Make sure Docker Compose is also available:
+Restart your terminal (or run `source ~/.bashrc`) and verify:
 
 ```bash
-docker compose version
+pixi --version
 ```
 
-> **WSL users:** Docker should be installed and running inside the WSL environment itself. Do not install Docker Desktop as part of this setup.
+### Graphics drivers (Linux / WSL)
+
+pixi provides everything except the graphics driver, which comes from the host system. A normal Ubuntu desktop already has it. On a minimal install, server, or container, install Mesa:
+
+```bash
+sudo apt install libegl-mesa0 libgl1-mesa-dri libglx-mesa0
+```
 
 ### Clone the Repository
 
-Choose a location for your project files and navigate there using `cd` and `ls`.
-
-If you are using WSL, **do not clone the repository inside `/mnt/...`**. Store the project inside the WSL filesystem for better performance.
-
-Create the workspace structure:
+Clone the repository using SSH so that you can push changes to your fork. It can live anywhere; a `ros2_ws/src` layout is **not** required.
 
 ```bash
 cd ~
-mkdir -p ros2_ws/src
-cd ros2_ws/src
-```
-
-Clone the repository using SSH so that you can push changes to your fork:
-
-```bash
 git clone git@github.com:<your-username>/Warrior1_2027.git
-```
-
-Your final directory structure should look like:
-
-```text
-~/ros2_ws/
-└── src/
-    └── Warrior1_2027/
-        ├── .devcontainer/
-        ├── ...
-        └── ...
+cd Warrior1_2027
 ```
 
 > Replace the repository URL above with the SSH URL provided by GitHub under **Code → SSH**.
 
----
-
-# Docker Development Environment
-
-The Docker environment provides:
-
-* ROS 2 Humble
-* Gazebo
-* RViz2
-* Required development dependencies
-* A consistent Ubuntu/ROS environment for the project
-
-GUI applications use the host **X11/WSLg display directly**. Mesa is configured for **software rendering (llvmpipe)** by default.
-
-## Initial Setup
+### Install the environment
 
 From the repository root:
 
 ```bash
-cd ~/ros2_ws/src/Warrior1_2027
+pixi install
 ```
 
-### Native Linux
-
-On native Linux, allow local Docker clients to connect to the X server:
-
-```bash
-xhost +local:docker
-```
-
-This is only required for native Linux X11. WSLg uses its own display integration.
-
-### Run the Setup Script
-
-Navigate into `.devcontainer`:
-
-```bash
-cd .devcontainer
-```
-
-Run:
-
-```bash
-./setup.sh
-```
-
-The setup script detects the host environment and configures the corresponding display mounts.
-
-It supports:
-
-* Native Linux X11
-* Windows WSL2/WSLg
-* Software rendering
-* Optional hardware acceleration
-* Headless operation
-
-Run the setup script again whenever you change the GUI or acceleration configuration.
-
-### Build the Docker Image
-
-For the initial setup:
-
-```bash
-docker compose build
-```
-
-Run this again when the `Dockerfile` or other Docker build dependencies change.
-
-Normally, the cached build is sufficient. If you need to force a completely fresh build:
-
-```bash
-docker compose build --no-cache
-```
-
-### Start the Container
-
-For normal startup:
-
-```bash
-docker compose up -d
-```
-
-This starts the container in the background.
-
-If the Compose configuration has changed and the container needs to be recreated:
-
-```bash
-docker compose up -d --force-recreate
-```
-
-### Open a Docker Terminal
-
-```bash
-docker compose exec ros2 bash
-```
-
-You can now work inside the ROS 2 development environment.
+The first run downloads ROS 2 Jazzy, Gazebo Harmonic, and the build tools (a few GB) into `.pixi/`. Later runs are instant.
 
 ---
 
-# Display and GPU Configuration
+# Using the pixi Environment
 
-Software rendering is the default configuration. This uses Mesa's **llvmpipe** renderer inside the container and provides a consistent fallback across supported hosts.
+All commands are run from the repository root. Workspace build output (`build/`, `install/`, `log/`) is created there and is git-ignored.
 
-The setup script can be used to change the rendering mode.
+## Tasks
 
-## Software Rendering
+Common workflows are defined as tasks in `pixi.toml`:
 
-To explicitly configure software rendering:
+| Command | What it does |
+| --- | --- |
+| `pixi run build` | `colcon build --symlink-install` for all packages |
+| `pixi run test` | Build, then `colcon test` and print results |
+| `pixi run clean` | Delete `build/`, `install/`, `log/` |
+| `pixi run display` | Show the robot model in RViz2 with joint sliders |
+| `pixi run sim` | Launch Gazebo Harmonic with the robot spawned and sensors bridged to ROS |
+| `pixi run sim-headless` | Same as `sim`, but Gazebo server only (no GUI window), e.g. over SSH |
+| `pixi run talker-listener` | Sanity check that ROS 2 communication works |
 
-```bash
-./setup.sh --accel=software
-```
+Launch tasks build the workspace first, so you don't need to run `pixi run build` separately.
 
-After changing the acceleration setting, recreate the container:
+Run `pixi task list` to see all tasks.
 
-```bash
-docker compose up -d --force-recreate
-```
+## Interactive shell
 
-## Hardware Acceleration
-
-If your system supports GPU passthrough, hardware acceleration can be enabled with:
-
-```bash
-./setup.sh --accel=hardware
-```
-
-This configures the appropriate device for the host:
-
-| Host         | GPU device |
-| ------------ | ---------- |
-| Native Linux | `/dev/dri` |
-| WSL2         | `/dev/dxg` |
-
-The llvmpipe override is removed when hardware acceleration is enabled.
-
-After changing the rendering configuration, recreate the container:
+To get a terminal with ROS 2 available (the equivalent of `source /opt/ros/jazzy/setup.bash`):
 
 ```bash
-docker compose up -d --force-recreate
-** This might not work, so if so, make an issue with the details about your environment an graphics capability and it (might) be fixed**
+pixi shell
+source install/setup.bash   # after building, to use this workspace's packages
 ```
 
-## Headless Mode
-
-If GUI applications are not required:
+Then use `ros2`, `colcon`, `gz`, `rviz2`, etc. as normal:
 
 ```bash
-./setup.sh --gui=false
+ros2 launch warrior1_bringup sim.launch.py
+ros2 topic list
 ```
 
-Then recreate the container:
+Type `exit` to leave the pixi shell.
+
+You can also run a single command without entering the shell:
 
 ```bash
-docker compose up -d --force-recreate
+pixi run ros2 topic list
 ```
 
-This configures the environment without host GUI display integration.
+## Adding dependencies
+
+ROS packages are installed through pixi, not `apt`/`rosdep`. Package names follow the pattern `ros-jazzy-<package-name>` (underscores become dashes):
+
+```bash
+pixi add ros-jazzy-nav2-bringup
+pixi add ros-jazzy-robot-localization
+```
+
+This updates `pixi.toml` and `pixi.lock`; **commit both files**. Also list the dependency in the package's `package.xml` as usual.
+
+Browse available ROS packages at <https://prefix.dev/channels/robostack-jazzy>.
+
+## Display and GPU notes
+
+* Gazebo and RViz2 use the host's OpenGL driver (Mesa or NVIDIA).
+* If you have no GPU, Mesa's software renderer (llvmpipe) is used automatically. It works but is slow; `pixi run sim-headless` avoids the GUI cost while still producing sensor data.
+* If Gazebo crashes with `Unable to load Ogre Plugin ... RenderSystem_GL3Plus`, no OpenGL driver is installed; see [Graphics drivers](#graphics-drivers-linux--wsl).
+
+## VS Code
+
+Open the repository root in VS Code. `.vscode/settings.json` points the Python and C++ extensions at the pixi environment. Run `pixi install` first so `.pixi/` exists.
 
 ---
 
 # Development Workflow
-
-Once the Docker container is running, open a terminal inside it:
-
-```bash
-docker compose exec ros2 bash
-```
-
-From there, work normally within the ROS 2 workspace.
 
 Before starting work, check the repository's **GitHub Issues** tab.
 
@@ -426,103 +329,40 @@ git pull origin dev
 
 # Quick Reference
 
-### First-time setup — Windows 11 / WSL
+### First-time setup
 
 ```bash
-# Only if WSL is not already installed
+# Windows only: install WSL if needed, then enter it
 wsl --install
-
-# Enter WSL
 wsl
 
-# Create the ROS workspace
-cd ~
-mkdir -p ros2_ws/src
-cd ros2_ws/src
+# Install pixi (then restart your terminal)
+curl -fsSL https://pixi.sh/install.sh | sh
 
 # Clone your fork
+cd ~
 git clone git@github.com:<your-username>/Warrior1_2027.git
-cd Warrior1_2027/.devcontainer
+cd Warrior1_2027
 
-# Configure the environment
-./setup.sh
+# Install ROS 2 Jazzy + Gazebo Harmonic into .pixi/
+pixi install
 
-# Build the image
-docker compose build
-
-# Start the container
-docker compose up -d
-
-# Enter the container
-docker compose exec ros2 bash
+# Build and test
+pixi run test
 ```
 
-### Normal startup
+### Everyday use
 
 ```bash
-cd ~/ros2_ws/src/Warrior1_2027/.devcontainer
-docker compose up -d
-docker compose exec ros2 bash
+cd ~/Warrior1_2027
+pixi run build          # build the workspace
+pixi run sim            # Gazebo simulation
+pixi run display        # RViz2 robot model
+pixi shell              # interactive ROS 2 terminal (then: source install/setup.bash)
 ```
 
-### After changing the Dockerfile
+### After pulling changes to pixi.toml / pixi.lock
 
 ```bash
-docker compose build
-docker compose up -d --force-recreate
+pixi install
 ```
-
-If a completely fresh build is required:
-
-```bash
-docker compose build --no-cache
-docker compose up -d --force-recreate
-```
-
-### Change rendering mode
-
-```bash
-# Software rendering
-./setup.sh --accel=software
-
-# Hardware acceleration
-./setup.sh --accel=hardware
-
-# Headless
-./setup.sh --gui=false
-```
-
-After changing the rendering mode:
-
-```bash
-docker compose up -d --force-recreate
-```
-
-### Update `dev` before creating a branch
-
-```bash
-git fetch origin
-git checkout dev
-git pull origin dev
-```
-
-### Git workflow
-
-```bash
-# Create/switch to your issue branch
-git checkout <branch-name>
-
-# Make changes...
-
-# Check changes
-git status
-
-# Commit
-git add .
-git commit -m "type-description #issue-number"
-
-# Push
-git push
-```
-
-Then open a pull request targeting **`dev`**.
