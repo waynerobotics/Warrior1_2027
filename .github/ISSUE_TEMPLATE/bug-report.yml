@@ -1,0 +1,88 @@
+name: Bug Report
+description: Report a malfunction in the ROS workspace, simulation, hardware, or development environment.
+title: "[Bug]: "
+labels: ["type: bug"]
+body:
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Subsystem
+      description: Which part of the system is affected?
+      options:
+        - Navigation
+        - Localization
+        - Perception
+        - Control
+        - Hardware / Embedded
+        - Sensors
+        - Simulation
+        - Dev Environment / CI
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Development Environment
+      options:
+        - Pixi / RoboStack
+        - Docker devcontainer
+        - Native Linux
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem Description
+      description: What happened?
+      placeholder: Describe the malfunction clearly and concisely.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+      description: Include commands, launch files, parameters, and any hardware setup.
+      placeholder: |
+        1. Run ...
+        2. Launch ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: Include relevant errors, screenshots, terminal output, or ROS logs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment_details
+    attributes:
+      label: Environment Details
+      description: OS, architecture, ROS 2 distro, Pixi/Docker versions, GPU, and robot hardware where relevant.
+      placeholder: Ubuntu 24.04, ROS 2 Jazzy, Pixi 0.x, ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or Additional Context
+      description: Paste logs or attach files that help diagnose the issue.
+    validations:
+      required: false
