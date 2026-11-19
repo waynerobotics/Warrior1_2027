@@ -3,9 +3,9 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command
+from launch.substitutions import Command, LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -46,12 +46,30 @@ def generate_launch_description():
         output='screen'
     )
 
+    # headless:=true runs only the Gazebo server (no GUI window), e.g. over SSH
+    # or in CI. Sensors still render offscreen so /scan keeps publishing.
+    headless_arg = DeclareLaunchArgument(
+        'headless',
+        default_value='false',
+        description='Run Gazebo server only, without the GUI'
+    )
+    headless = LaunchConfiguration('headless')
+
     # 2. Start Gazebo with our world (-r = run immediately)
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(ros_gz_sim_pkg, 'launch', 'gz_sim.launch.py')
         ),
-        launch_arguments={'gz_args': f'-r {world_path}'}.items()
+        launch_arguments={
+            'gz_args': [
+                '-r ',
+                PythonExpression([
+                    "'-s --headless-rendering ' if '", headless,
+                    "'.lower() == 'true' else ''"
+                ]),
+                world_path
+            ]
+        }.items()
     )
 
     # 3. Spawn the robot from the /robot_description topic
@@ -79,6 +97,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        headless_arg,
         robot_state_publisher,
         gazebo,
         spawn_robot,

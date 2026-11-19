@@ -56,3 +56,10 @@ CATKIN_IGNORE
 .devcontainer/docker-compose.override.yml
 # VS Code C/C++ IntelliSense database
 .vscode/browse.vc.db*
+
+# colcon workspace outputs (built from the repo root via pixi)
+/install/
+/log/
+
+# pixi environments (pixi.lock IS committed)
+.pixi/

@@ -6,14 +6,15 @@
         "limitSymbolsToIncludedHeaders": false
       },
       "includePath": [
-        "/opt/ros/humble/include/**",
+        "${workspaceFolder}/.pixi/envs/default/include/**",
         "/usr/include/**"
       ],
       "name": "ros2",
       "intelliSenseMode": "gcc-x64",
-      "compilerPath": "/usr/bin/gcc",
+      "compilerPath": "${workspaceFolder}/.pixi/envs/default/bin/x86_64-conda-linux-gnu-gcc",
       "cStandard": "gnu11",
-      "cppStandard": "c++17"
+      "cppStandard": "c++17",
+      "compileCommands": "${workspaceFolder}/build/compile_commands.json"
     }
   ],
   "version": 4

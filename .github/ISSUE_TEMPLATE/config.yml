@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Development Question or Discussion
+    url: https://github.com/waynerobotics/Warrior1_2027/discussions
+    about: Ask setup, usage, or design questions in Discussions.
