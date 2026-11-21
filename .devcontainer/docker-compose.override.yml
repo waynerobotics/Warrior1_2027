@@ -1,9 +1,4 @@
+# No host display socket was detected. GUI applications require a local
+# X11/WSLg session; no virtual display or browser relay is started.
 services:
-  ros2:
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-    environment:
-      DISPLAY: :0
-      LIBGL_ALWAYS_SOFTWARE: "1"
-      GALLIUM_DRIVER: llvmpipe
-      MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+  ros2: {}
