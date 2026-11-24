@@ -41,8 +41,8 @@ libgl-devel = "*"
 # Tasks run from the repo root. Workspace build artifacts (build/ install/ log/)
 # land in the repo root and are git-ignored.
 [tasks]
-build = { cmd = "colcon build --symlink-install", description = "Build all workspace packages" }
-test = { cmd = "colcon test --event-handlers console_direct+ && colcon test-result --verbose", depends-on = ["build"], description = "Build, then run all package tests" }
+build = { cmd = "colcon build --symlink-install", env = { PSModulePath = "" }, description = "Build all workspace packages" }
+test = { cmd = "colcon test --event-handlers console_direct+ && colcon test-result --verbose", depends-on = ["build"], env = { PSModulePath = "" }, description = "Build, then run all package tests" }
 clean = { cmd = "rm -rf build install log", description = "Remove colcon build artifacts" }
 
 # Launch tasks source the workspace overlay first.

@@ -63,3 +63,6 @@ CATKIN_IGNORE
 
 # pixi environments (pixi.lock IS committed)
 .pixi/
+
+# GPU output stuff
+ucode.elf
