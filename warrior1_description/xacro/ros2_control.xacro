@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+
+<!--
+  ros2_control interface for the Warrior.
+
+  The joints and their interfaces are the same for every simulator (and for
+  the real robot later); only the hardware plugin underneath changes:
+
+    sim_mode:=gazebo  gz_ros2_control/GazeboSimSystem
+                      (controller_manager runs inside Gazebo)
+    sim_mode:=isaac   topic_based_ros2_control/TopicBasedSystem
+                      (controller_manager runs as ros2_control_node, and
+                       exchanges joint commands/states with Isaac Sim over
+                       /isaac_joint_commands and /isaac_joint_states)
+    sim_mode:=mock    mock_components/GenericSystem
+                      (no physics: commands are echoed back as state; useful
+                       for testing controllers/nav logic without a GPU)
+
+  Controllers (diff_drive_controller, joint_state_broadcaster) are configured
+  once in warrior1_bringup/config/controllers.yaml and used unchanged by all
+  modes.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="wheel_interfaces" params="joint">
+        <joint name="${joint}">
+            <command_interface name="velocity">
+                <param name="min">${-diff_wheel_max_velocity}</param>
+                <param name="max">${diff_wheel_max_velocity}</param>
+            </command_interface>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:macro name="warrior_ros2_control" params="sim_mode controllers_file">
+
+        <ros2_control name="WarriorSystem" type="system">
+            <hardware>
+                <xacro:if value="${sim_mode == 'gazebo'}">
+                    <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+                </xacro:if>
+                <xacro:if value="${sim_mode == 'isaac'}">
+                    <plugin>topic_based_ros2_control/TopicBasedSystem</plugin>
+                    <param name="joint_commands_topic">/isaac_joint_commands</param>
+                    <param name="joint_states_topic">/isaac_joint_states</param>
+                    <!-- Continuous wheel joints: report unwrapped angle -->
+                    <param name="sum_wrapped_joint_states">true</param>
+                    <!-- Always publish commands. The default only publishes when the
+                         commanded *position* changes, which never happens for
+                         velocity-controlled wheels. -->
+                    <param name="trigger_joint_command_threshold">-1</param>
+                </xacro:if>
+                <xacro:if value="${sim_mode == 'mock'}">
+                    <plugin>mock_components/GenericSystem</plugin>
+                    <param name="calculate_dynamics">true</param>
+                </xacro:if>
+            </hardware>
+            <xacro:wheel_interfaces joint="left_wheel_joint"/>
+            <xacro:wheel_interfaces joint="right_wheel_joint"/>
+        </ros2_control>
+
+        <xacro:if value="${sim_mode == 'gazebo'}">
+            <gazebo>
+                <plugin filename="gz_ros2_control-system"
+                        name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+                    <parameters>${controllers_file}</parameters>
+                </plugin>
+            </gazebo>
+        </xacro:if>
+
+    </xacro:macro>
+
+</robot>

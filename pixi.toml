@@ -1,9 +1,16 @@
 [workspace]
 name = "warrior1_2027"
-description = "ROS 2 Jazzy + Gazebo Harmonic workspace for the Wayne State Robotics Warrior platform"
+description = "ROS 2 Jazzy workspace (Gazebo Harmonic / Isaac Sim) for the Wayne State Robotics Warrior platform"
 # RoboStack provides ROS 2 as conda packages, so no system-wide /opt/ros install is needed.
 channels = ["https://prefix.dev/robostack-jazzy", "https://prefix.dev/conda-forge"]
-platforms = ["linux-64", "linux-aarch64", "osx-arm64"]
+# x86-64 Linux needs glibc 2.35+ (Ubuntu 22.04+, WSL Ubuntu 24.04, current
+# Arch, Fedora). Isaac Sim's wheels require it, and declaring it here
+# lets the ROS packages use newer builds too.
+platforms = [
+    { name = "linux-64-glibc-2-35", platform = "linux-64", glibc = "2.35" },
+    "linux-aarch64",
+    "osx-arm64",
+]
 
 [dependencies]
 # --- Build tooling ---
@@ -27,6 +34,16 @@ ros-jazzy-joint-state-publisher-gui = "*"
 # --- Gazebo Harmonic + ROS bridge ---
 ros-jazzy-ros-gz = "*"            # ros_gz_sim, ros_gz_bridge, ros_gz_image (pulls in gz-sim8)
 
+# --- ros2_control: one controller config shared by every simulator ---
+ros-jazzy-ros2-control = "*"              # controller_manager, mock hardware
+ros-jazzy-ros2-controllers = "*"          # diff_drive_controller, joint_state_broadcaster
+ros-jazzy-gz-ros2-control = "*"           # hardware plugin for Gazebo
+ros-jazzy-topic-based-ros2-control = "*"  # hardware plugin for Isaac Sim (topics)
+
+# --- Operating the robot / sim remotely ---
+ros-jazzy-teleop-twist-keyboard = "*"
+ros-jazzy-foxglove-bridge = "*"           # browser visualization over one websocket
+
 # --- Lint / test (used by `colcon test`) ---
 ros-jazzy-ament-lint-auto = "*"
 ros-jazzy-ament-lint-common = "*"
@@ -49,4 +66,50 @@ clean = { cmd = "rm -rf build install log", description = "Remove colcon build a
 display = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_description display.launch.py'", depends-on = ["build"], description = "Show the robot model in RViz2" }
 sim = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_bringup sim.launch.py'", depends-on = ["build"], description = "Launch Gazebo Harmonic with the robot spawned" }
 sim-headless = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_bringup sim.launch.py headless:=true'", depends-on = ["build"], description = "Launch Gazebo server only (no GUI)" }
+sim-remote = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_bringup sim.launch.py headless:=true foxglove:=true'", depends-on = ["build"], description = "Headless Gazebo + foxglove_bridge on :8765 for viewing from another machine" }
+sim-isaac = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_bringup sim.launch.py simulator:=isaac'", depends-on = ["build"], description = "ROS side for Isaac Sim + Isaac with its window (Isaac from `pixi install -e isaac`, or ISAAC_SIM_PATH / ISAAC_PYTHON)" }
+sim-mock = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_bringup sim.launch.py simulator:=mock'", depends-on = ["build"], description = "No physics: ros2_control mock hardware, for testing controllers/nav logic anywhere" }
+sim-check = { cmd = "bash -c 'source install/setup.bash && ros2 run warrior1_simulation sim_check'", description = "Check a running sim (any simulator): topic rates + drive test, prints PASS/FAIL" }
+sim-isaac-headless = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_bringup sim.launch.py simulator:=isaac headless:=true'", depends-on = ["build"], description = "ROS side for Isaac Sim + Isaac without a window (Isaac from `pixi install -e isaac`)" }
+teleop = { cmd = "bash -c 'source install/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true'", description = "Drive the robot from the keyboard (publishes TwistStamped on /cmd_vel)" }
+foxglove = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_bringup foxglove.launch.py'", depends-on = ["build"], description = "foxglove_bridge on :8765 next to a running sim (tuned for SSH tunnels)" }
 talker-listener = { cmd = "bash -c 'source install/setup.bash && ros2 launch warrior1_bringup test_bringup.launch.py'", depends-on = ["build"], description = "Sanity-check ROS 2 with demo talker/listener nodes" }
+
+# ---------------------------------------------------------------------------
+# Isaac Sim environment (opt-in: `pixi install -e isaac`, ~20+ GB download).
+#
+# A separate environment with ONLY Python 3.12 + the isaacsim wheels. It must
+# not contain RoboStack ROS packages: Isaac ships its own ROS 2 Jazzy
+# libraries, and loading both sets in one process crashes. The two
+# environments talk over ROS 2 topics (DDS) instead.
+# Only linux-64: NVIDIA publishes no Isaac Sim wheels for ARM/macOS. The
+# NVIDIA driver (595+) still comes from the host.
+# ---------------------------------------------------------------------------
+[feature.isaac]
+platforms = ["linux-64-glibc-2-35"]
+
+[feature.isaac.dependencies]
+python = "3.12.*"
+# Isaac's FBX importer (omni.kit.asset_converter -> libfbxsdk.so) links
+# libxml2.so.2. Distros on libxml2 >= 2.14 (Arch, Fedora 42+,
+# Ubuntu 25.10+) only ship libxml2.so.16, so provide the old ABI here;
+# run_isaac.sh puts it on the library path.
+libxml2 = "2.13.*"
+
+[feature.isaac.pypi-dependencies]
+isaacsim = { version = "==6.2.0.0", extras = ["all", "extscache"] }
+
+[feature.isaac.pypi-options]
+extra-index-urls = ["https://pypi.nvidia.com"]
+# Isaac pulls packages from both indexes (e.g. mujoco-usd-converter is only
+# current on pypi.org), so pick the best version across both. pixi.lock pins
+# every wheel by URL and sha256, so installs can't be swapped; when
+# re-locking, review the pypi.nvidia.com / pypi.org URLs in the lock diff.
+index-strategy = "unsafe-best-match"
+
+[feature.isaac.tasks]
+isaac-sim = { cmd = "warrior1_simulation/isaac/run_isaac.sh", description = "Start Isaac Sim with the GUI (needs the ROS side running: pixi run sim-isaac)" }
+isaac-sim-headless = { cmd = "warrior1_simulation/isaac/run_isaac.sh --headless", description = "Start Isaac Sim without a window (e.g. over SSH)" }
+
+[environments]
+isaac = { features = ["isaac"], no-default-feature = true }
