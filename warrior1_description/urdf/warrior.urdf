@@ -1,7 +1,20 @@
 <?xml version="1.0"?>
 
+<!--
+  Warrior robot description. This file is the single source of truth for the
+  robot: Gazebo, Isaac Sim, RViz and ros2_control all read the URDF generated
+  from it.
+
+  xacro args:
+    sim_mode          gazebo | isaac | mock   (selects the ros2_control hardware plugin)
+    controllers_file  path to controllers.yaml (only needed for sim_mode:=gazebo)
+-->
 <robot name="warrior" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+<xacro:arg name="sim_mode" default="mock"/>
+<xacro:arg name="controllers_file" default=""/>
+
+<!-- Dimensions (m) -->
 <xacro:property name="base_width" value="0.3" />
 <xacro:property name="base_length" value="0.3" />
 <xacro:property name="base_height" value="0.15" />
@@ -22,6 +35,19 @@
 <xacro:property name="imu_width" value="0.05" />
 <xacro:property name="imu_height" value="0.02" />
 
+<!-- Masses (kg). Placeholders until the real robot is weighed. Keep the
+     chassis the heaviest part: physics engines (PhysX in particular) become
+     unstable when small parts are much heavier than the body they hang off. -->
+<xacro:property name="chassis_mass" value="2.0" />
+<xacro:property name="diff_wheel_mass" value="0.25" />
+<xacro:property name="caster_wheel_mass" value="0.1" />
+<xacro:property name="lidar_mass" value="0.17" />
+<xacro:property name="imu_mass" value="0.01" />
+
+<!-- Wheel motor limits, used by ros2_control and by the simulators' joint drives -->
+<xacro:property name="diff_wheel_max_effort" value="5.0" />      <!-- N*m -->
+<xacro:property name="diff_wheel_max_velocity" value="20.0" />   <!-- rad/s -->
+
   <material name="white">
     <color rgba="1 1 1 1"/>
   </material>
@@ -37,14 +63,15 @@
   <material name="black">
     <color rgba="0 0 0 1"/>
   </material>
-  
+
 <xacro:include filename="$(find warrior1_description)/xacro/inertial_macros.xacro"/>
 <xacro:include filename="$(find warrior1_description)/xacro/diff_wheel.xacro"/>
 <xacro:include filename="$(find warrior1_description)/xacro/caster_wheel.xacro"/>
 <xacro:include filename="$(find warrior1_description)/xacro/lidar.xacro"/>
 <xacro:include filename="$(find warrior1_description)/xacro/imu.urdf.xacro"/>
+<xacro:include filename="$(find warrior1_description)/xacro/ros2_control.xacro"/>
 
-<!-- Robot Base -->
+<!-- Robot Base: origin is the midpoint of the drive-wheel axle -->
 <link name="base_link"> </link>
 
 <joint name="chassis_joint" type="fixed">
@@ -56,7 +83,7 @@
 <!-- Base Chassis -->
 <link name="chassis">
     <visual>
-        <origin xyz="${base_height} 0 ${base_height/2}" rpy="0 0 0"/>
+        <origin xyz="${base_length/2} 0 ${base_height/2}" rpy="0 0 0"/>
         <geometry>
             <box size="${base_length} ${base_width} ${base_height}"/>
         </geometry>
@@ -64,49 +91,36 @@
     </visual>
 
     <collision>
-        <origin xyz="${base_height} 0 ${base_height/2}" rpy="0 0 0"/>
+        <origin xyz="${base_length/2} 0 ${base_height/2}" rpy="0 0 0"/>
         <geometry>
             <box size="${base_length} ${base_width} ${base_height}"/>
         </geometry>
     </collision>
 
-    <xacro:inertial_box mass="0.5" x="0.3" y="0.3" z="0.15">
-      <origin xyz="${base_height} 0 ${base_height/2}" rpy="0 0 0"/>
+    <xacro:inertial_box mass="${chassis_mass}" x="${base_length}" y="${base_width}" z="${base_height}">
+      <origin xyz="${base_length/2} 0 ${base_height/2}" rpy="0 0 0"/>
     </xacro:inertial_box>
 </link>
 
 
-<!-- Diff Wheels -->
-<xacro:diff_wheel  
-    prefix="left" 
-    parent_link="chassis"
-    x="0" y="0" z="0"
-    roll="0" pitch="0" yaw="0" 
+<!-- Diff Wheels: on either side of base_link, spinning about +y (positive = forward) -->
+<xacro:diff_wheel
+    prefix="left"
+    parent_link="base_link"
+    x="0" y="${diff_wheel_y}" z="0"
 />
 
-<!-- Caster Wheels -->
-<joint name="caster_wheel_joint" type="fixed">
-    <parent link="chassis"/>
-    <child link="caster_wheel"/>
-    <origin xyz="0.24 0 0" rpy="0 0 0"/>
-</joint>
+<xacro:diff_wheel
+    prefix="right"
+    parent_link="base_link"
+    x="0" y="${-diff_wheel_y}" z="0"
+/>
 
- <link name="caster_wheel">
-    <visual>
-        <geometry>
-            <sphere radius="${caster_wheel_radius}"/>
-        </geometry>
-        <material name="white"/>
-    </visual>
-    <collision>
-        <geometry>
-            <sphere radius="${caster_wheel_radius}"/>
-        </geometry>
-    </collision>
-    <xacro:inertial_sphere mass="10" radius="${caster_wheel_radius}">
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-    </xacro:inertial_sphere>
-</link>
+<!-- Caster Wheel: same radius as the drive wheels, so all three touch the ground -->
+<xacro:caster
+    parent_link="chassis"
+    x="0.24" y="0" z="0"
+/>
 
 <!-- IMU -->
 <xacro:imu
@@ -114,6 +128,12 @@
     parent_link="chassis"
     x="0.15" y="0" z="0.16"
     roll="0" pitch="0" yaw="0"
+/>
+
+<!-- ros2_control: identical joints/controllers for every simulator -->
+<xacro:warrior_ros2_control
+    sim_mode="$(arg sim_mode)"
+    controllers_file="$(arg controllers_file)"
 />
 
 </robot>

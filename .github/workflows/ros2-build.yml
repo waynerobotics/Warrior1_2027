@@ -17,6 +17,8 @@ on:
       - '**/*.xacro'
       - '**/*.urdf'
       - '**/*.sdf'
+      - '**/*.yaml'
+      - '**/*.sh'
       - '.github/workflows/ros2-build.yml'
   pull_request:
     branches: [ "main", "dev" ]

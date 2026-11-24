@@ -10,16 +10,16 @@
     <link name="laser_frame"> 
         <visual>
             <geometry> <!-- add mesh file after -->
-                <cylinder radius="0.05" length="0.04"/>
+                <cylinder radius="${lidar_radius}" length="${lidar_length}"/>
             </geometry>
             <material name="black"/>
         </visual>
         <collision>
             <geometry>
-                <cylinder radius="0.05" length="0.04"/>
+                <cylinder radius="${lidar_radius}" length="${lidar_length}"/>
             </geometry>
         </collision>
-        <xacro:inertial_cylinder mass="0.1" length="0.04" radius="0.05">
+        <xacro:inertial_cylinder mass="${lidar_mass}" length="${lidar_length}" radius="${lidar_radius}">
             <origin xyz="0 0 0" rpy="0 0 0"/>
         </xacro:inertial_cylinder>
     </link>

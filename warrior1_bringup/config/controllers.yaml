@@ -1,0 +1,52 @@
+# ros2_control controllers for the Warrior.
+#
+# This one file is used unchanged by every simulator (simulator:=gazebo,
+# isaac or mock) and is meant to be reused on the real robot.
+#
+# Robot geometry is NOT repeated here: wheel_separation and wheel_radius are
+# computed from the URDF at launch time (see warrior1_simulation/robot_model.py)
+# and passed to the diff_drive_controller as an extra parameter file. Change
+# the wheels in warrior1_description and the controller follows.
+
+controller_manager:
+  ros__parameters:
+    update_rate: 50  # Hz
+    use_sim_time: true
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+
+diff_drive_controller:
+  ros__parameters:
+    left_wheel_names: ["left_wheel_joint"]
+    right_wheel_names: ["right_wheel_joint"]
+
+    # wheel_separation / wheel_radius: injected from the URDF at launch.
+    wheel_separation_multiplier: 1.0
+    left_wheel_radius_multiplier: 1.0
+    right_wheel_radius_multiplier: 1.0
+
+    publish_rate: 50.0
+    odom_frame_id: odom
+    base_frame_id: base_link
+    pose_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+    twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+
+    open_loop: false
+    enable_odom_tf: true
+
+    # Stop the robot if no /cmd_vel arrives for this long (s)
+    cmd_vel_timeout: 0.5
+
+    linear.x.max_velocity: 1.0
+    linear.x.min_velocity: -1.0
+    linear.x.max_acceleration: 1.0
+    linear.x.min_acceleration: -1.0
+
+    angular.z.max_velocity: 3.0
+    angular.z.min_velocity: -3.0
+    angular.z.max_acceleration: 6.0
+    angular.z.min_acceleration: -6.0

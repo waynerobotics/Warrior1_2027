@@ -2,30 +2,40 @@
 
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" >
 
-<xacro:macro name="caster" params="prefix parent_link x y z roll pitch yaw">
+<!--
+  Passive ball caster, modelled as a fixed, (almost) frictionless sphere.
+  The friction values in the <gazebo> block are also applied by the Isaac
+  Sim launcher, so the caster slides in both simulators.
+-->
+<xacro:macro name="caster" params="parent_link x y z">
 
-    <joint name="{prefix}_caster_joint" type="fixed">
-        <parent link="{parent_link}"/>
+    <joint name="caster_wheel_joint" type="fixed">
+        <parent link="${parent_link}"/>
         <child link="caster_wheel"/>
-        <origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}"/>
+        <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
     </joint>
 
     <link name="caster_wheel">
-            <visual>
-                <geometry>
-                    <sphere radius="${caster_wheel_radius}"/>
-                </geometry>
-                <material name="white"/>
-            </visual>
-            <collision>
-                <geometry>
-                    <sphere radius="${caster_wheel_radius}"/>
-                </geometry>
-            </collision>
-        <xacro:inertial_sphere mass="10" radius="${caster_wheel_radius}">
-            <origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}"/>
+        <visual>
+            <geometry>
+                <sphere radius="${caster_wheel_radius}"/>
+            </geometry>
+            <material name="white"/>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="${caster_wheel_radius}"/>
+            </geometry>
+        </collision>
+        <xacro:inertial_sphere mass="${caster_wheel_mass}" radius="${caster_wheel_radius}">
+            <origin xyz="0 0 0" rpy="0 0 0"/>
         </xacro:inertial_sphere>
     </link>
 
-    </xacro:macro>
+    <gazebo reference="caster_wheel">
+        <mu1>0.001</mu1>
+        <mu2>0.001</mu2>
+    </gazebo>
+
+</xacro:macro>
 </robot>

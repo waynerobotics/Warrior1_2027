@@ -64,5 +64,6 @@ CATKIN_IGNORE
 # pixi environments (pixi.lock IS committed)
 .pixi/
 
-# GPU output stuff
+# GPU crash dumps Isaac Sim / CUDA can write into the working directory
 ucode.elf
+*.nv-gpudmp
