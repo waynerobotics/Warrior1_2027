@@ -2,15 +2,23 @@
 
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+    <!--
+      Driven wheel. The joint frame is rolled -90 deg about x so that the
+      cylinder (whose axis is z) lies on its side and the joint axis (z)
+      points along the robot's +y. Positive velocity rolls the robot forward
+      for both the left and right wheel.
+    -->
     <xacro:macro name="diff_wheel"
-                 params="prefix parent_link x y z roll pitch yaw">
+                 params="prefix parent_link x y z">
 
         <joint name="${prefix}_wheel_joint" type="continuous">
-            <parent link="base_link"/>
+            <parent link="${parent_link}"/>
             <child link="${prefix}_wheel"/>
             <origin xyz="${x} ${y} ${z}"
-                    rpy="${roll} ${pitch} ${yaw}"/>
+                    rpy="${-pi/2} 0 0"/>
             <axis xyz="0 0 1"/>
+            <limit effort="${diff_wheel_max_effort}" velocity="${diff_wheel_max_velocity}"/>
+            <dynamics damping="0.0" friction="0.0"/>
         </joint>
 
         <link name="${prefix}_wheel">
@@ -33,13 +41,19 @@
             </collision>
 
             <xacro:inertial_cylinder
-                mass="0.1"
+                mass="${diff_wheel_mass}"
                 length="${diff_wheel_width}"
                 radius="${diff_wheel_radius}">
                 <origin xyz="0 0 0" rpy="0 0 0"/>
             </xacro:inertial_cylinder>
 
         </link>
+
+        <!-- Grippy rubber tyre. Read by Gazebo and by the Isaac Sim launcher. -->
+        <gazebo reference="${prefix}_wheel">
+            <mu1>1.0</mu1>
+            <mu2>1.0</mu2>
+        </gazebo>
 
     </xacro:macro>
 

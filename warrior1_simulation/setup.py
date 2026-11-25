@@ -14,6 +14,9 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),
+        # Isaac Sim launcher. Run by Isaac Sim's own Python, not by ROS.
+        (os.path.join('share', package_name, 'isaac'),
+            glob('isaac/*.py') + glob('isaac/*.sh')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -28,6 +31,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'sim_check = warrior1_simulation.sim_check:main',
         ],
     },
 )
