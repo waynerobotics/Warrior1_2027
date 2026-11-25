@@ -28,7 +28,7 @@
             </collision>
 
             <xacro:inertial_box
-                mass="0.01"
+                mass="${imu_mass}"
                 x="${imu_length}"
                 y="${imu_width}"
                 z="${imu_height}">
